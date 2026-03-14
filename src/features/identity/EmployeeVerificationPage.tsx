@@ -1,164 +1,141 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useData } from '../data/DataContext';
+import React, { useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useData } from '../../services/employeeDataStore';
 
-export const DetailsPage: React.FC = () => {
+export const EmployeeVerificationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { rows } = useData();
   const navigate = useNavigate();
+  const { rows } = useData();
+  const [photoData, setPhotoData] = useState<string | null>(null);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const signatureRef = useRef<HTMLCanvasElement>(null);
+
   const employee = rows.find((r) => r.id === id);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const photoCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [hasPhoto, setHasPhoto] = useState(false);
-  const [drawing, setDrawing] = useState(false);
-
-  const [mergedDataUrl, setMergedDataUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const enableCamera = async () => {
-      try {
-        const media = await navigator.mediaDevices.getUserMedia({ video: true });
-        setStream(media);
-        if (videoRef.current) {
-          videoRef.current.srcObject = media;
-        }
-      } catch (err) {
-        console.error('Camera error', err);
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
       }
-    };
-    enableCamera();
-    return () => {
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, [stream]);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+    }
+  };
 
   const capturePhoto = () => {
-    if (!videoRef.current || !photoCanvasRef.current) return;
-    const video = videoRef.current;
-    const canvas = photoCanvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    setHasPhoto(true);
+    if (videoRef.current && canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        ctx.drawImage(videoRef.current, 0, 0);
+        setPhotoData(canvasRef.current.toDataURL('image/png'));
+      }
+    }
   };
 
-  const startDraw = (x: number, y: number) => {
-    if (!signatureCanvasRef.current) return;
-    const ctx = signatureCanvasRef.current.getContext('2d');
+  const handleSignature = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!signatureRef.current) return;
+    const ctx = signatureRef.current.getContext('2d');
     if (!ctx) return;
-    ctx.strokeStyle = '#ff0055';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setDrawing(true);
-  };
-
-  const continueDraw = (x: number, y: number) => {
-    if (!drawing || !signatureCanvasRef.current) return;
-    const ctx = signatureCanvasRef.current.getContext('2d');
-    if (!ctx) return;
+    
+    const rect = signatureRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
     ctx.lineTo(x, y);
     ctx.stroke();
-  };
-
-  const endDraw = () => {
-    setDrawing(false);
-  };
-
-  const mergeImageAndSignature = () => {
-    if (!photoCanvasRef.current || !signatureCanvasRef.current) return;
-    const base = photoCanvasRef.current;
-    const sig = signatureCanvasRef.current;
-    const merged = document.createElement('canvas');
-    merged.width = base.width;
-    merged.height = base.height;
-    const ctx = merged.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(base, 0, 0);
-    ctx.drawImage(sig, 0, 0);
-    const url = merged.toDataURL('image/png');
-    setMergedDataUrl(url);
-    window.sessionStorage.setItem('audit-image', url);
-    navigate('/analytics');
+    setSignatureData(signatureRef.current.toDataURL('image/png'));
   };
 
   if (!employee) {
     return (
-      <section className="page details-page">
-        <p>Employee not found. Go back to the list.</p>
+      <section className="page">
+        <p>Employee not found.</p>
+        <button onClick={() => navigate('/list')} className="primary-btn">
+          Back to List
+        </button>
       </section>
     );
   }
 
-  const handlePointerDown: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    startDraw(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const handlePointerMove: React.PointerEventHandler<HTMLCanvasElement> = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    continueDraw(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const handlePointerUp: React.PointerEventHandler<HTMLCanvasElement> = () => {
-    endDraw();
-  };
-
   return (
-    <section className="page details-page">
+    <section className="page">
       <header className="page-header">
-        <h2>Identity Verification</h2>
-        <p>
-          {employee.name} – {employee.city}
-        </p>
+        <h2>Employee Verification: {employee.name}</h2>
+        <p>Verify employee identity with photo and signature</p>
       </header>
 
       <div className="details-grid">
         <div className="camera-panel">
-          <h3>Camera</h3>
+          <h3>Photo Verification</h3>
           <video ref={videoRef} autoPlay playsInline className="camera-video" />
-          <button className="primary-btn" type="button" onClick={capturePhoto}>
-            Capture Photo
-          </button>
-          <canvas ref={photoCanvasRef} className="photo-canvas" />
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+            <button onClick={startCamera} className="primary-btn">Start Camera</button>
+            <button onClick={capturePhoto} className="primary-btn">Capture</button>
+          </div>
+          {photoData && (
+            <div className="preview">
+              <img src={photoData} alt="Captured" />
+            </div>
+          )}
         </div>
 
         <div className="signature-panel">
-          <h3>Signature over Photo</h3>
-          <div className="signature-overlay">
-            <canvas
-              ref={signatureCanvasRef}
-              className="signature-canvas"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
-            />
-          </div>
-          <button
-            className="primary-btn"
-            type="button"
-            onClick={mergeImageAndSignature}
-            disabled={!hasPhoto}
-          >
-            Merge &amp; Continue
+          <h3>Signature Capture</h3>
+          <canvas
+            ref={signatureRef}
+            width={400}
+            height={200}
+            className="signature-canvas"
+            onMouseDown={(e) => {
+              const ctx = signatureRef.current?.getContext('2d');
+              if (ctx) {
+                ctx.beginPath();
+                const rect = signatureRef.current!.getBoundingClientRect();
+                ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+              }
+              signatureRef.current?.addEventListener('mousemove', handleSignature as any);
+            }}
+          />
+          <button onClick={() => setSignatureData(null)} className="primary-btn" style={{ marginTop: '8px' }}>
+            Clear Signature
           </button>
-          {mergedDataUrl && (
-            <div className="preview">
-              <h4>Audit Image Preview</h4>
-              <img src={mergedDataUrl} alt="Merged audit" />
-            </div>
-          )}
+        </div>
+
+        <div className="audit-panel">
+          <h3>Employee Details</h3>
+          <div className="cell">
+            <strong>ID:</strong> {employee.id}
+          </div>
+          <div className="cell">
+            <strong>Name:</strong> {employee.name}
+          </div>
+          <div className="cell">
+            <strong>City:</strong> {employee.city}
+          </div>
+          <div className="cell">
+            <strong>Salary:</strong> ${employee.salary}
+          </div>
+        </div>
+
+        <div className="charts-panel">
+          <h3>Verification Status</h3>
+          <p>Photo: {photoData ? '✓ Captured' : '✗ Not captured'}</p>
+          <p>Signature: {signatureData ? '✓ Signed' : '✗ Not signed'}</p>
+          <button 
+            onClick={() => navigate('/list')} 
+            className="primary-btn" 
+            style={{ marginTop: '16px' }}
+          >
+            Back to List
+          </button>
         </div>
       </div>
     </section>
   );
 };
-

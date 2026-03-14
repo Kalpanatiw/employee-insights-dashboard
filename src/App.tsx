@@ -1,64 +1,80 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import { DataProvider } from './data/DataContext';
-import { LoginPage } from './pages/LoginPage';
-import { ListPage } from './pages/ListPage';
-import { DetailsPage } from './pages/DetailsPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
+
+import { AuthProvider, useAuth } from './core/session/SessionProvider';
+import { DataProvider } from './services/employeeDataStore';
+
+import { LoginPage } from './core/session/LoginPage';
+import { EmployeeListPage } from './features/employees/EmployeeListPage';
+import { EmployeeVerificationPage } from './features/identity/EmployeeVerificationPage';
+import { AnalyticsDashboard } from './features/analytics/AnalyticsDashboard';
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
   return children;
 };
 
-export const App: React.FC = () => {
-   const { logout } = useAuth();
+const AppContent: React.FC = () => {
+  const { logout } = useAuth();
+
   return (
-    <AuthProvider>
-      <DataProvider>
-        <div className="app-shell">
-          <header className="app-header">
-            <h1>Employee Insights Dashboard</h1>
-            <button onClick={logout}>Logout</button>
-          </header>
-          <main className="app-main">
-            <Routes>
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route
-                path="/list"
-                element={
-                  <PrivateRoute>
-                    <ListPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/details/:id"
-                element={
-                  <PrivateRoute>
-                    <DetailsPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/analytics"
-                element={
-                  <PrivateRoute>
-                    <AnalyticsPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </main>
-        </div>
-      </DataProvider>
-    </AuthProvider>
+    <DataProvider>
+      <div className="app-shell">
+        <header className="app-header">
+          <h1>Employee Insights Dashboard</h1>
+          <button onClick={logout}>Logout</button>
+        </header>
+
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+
+            <Route path="/login" element={<LoginPage />} />
+
+            <Route
+              path="/list"
+              element={
+                <PrivateRoute>
+                  <EmployeeListPage />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/details/:id"
+              element={
+                <PrivateRoute>
+                  <EmployeeVerificationPage />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/analytics"
+              element={
+                <PrivateRoute>
+                  <AnalyticsDashboard />
+                </PrivateRoute>
+              }
+            />
+
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </main>
+      </div>
+    </DataProvider>
   );
 };
 
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+};

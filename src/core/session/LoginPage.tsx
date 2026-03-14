@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from './SessionProvider';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
