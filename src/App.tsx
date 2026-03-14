@@ -16,12 +16,14 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
 };
 
 export const App: React.FC = () => {
+   const { logout } = useAuth();
   return (
     <AuthProvider>
       <DataProvider>
         <div className="app-shell">
           <header className="app-header">
             <h1>Employee Insights Dashboard</h1>
+            <button onClick={logout}>Logout</button>
           </header>
           <main className="app-main">
             <Routes>
