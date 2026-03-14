@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './core/session/SessionProvider';
 import { DataProvider } from './services/employeeDataStore';
@@ -27,7 +27,11 @@ const AppContent: React.FC = () => {
       <div className="app-shell">
         <header className="app-header">
           <h1>Employee Insights Dashboard</h1>
-          <button onClick={logout}>Logout</button>
+          <nav style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <Link to="/list" style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Employee List</Link>
+            <Link to="/analytics" style={{ color: '#9ca3af', fontSize: '0.9rem' }}>Analytics</Link>
+            <button onClick={logout}>Logout</button>
+          </nav>
         </header>
 
         <main className="app-main">
